@@ -14,8 +14,10 @@ class ClauseRisk(BaseModel):
 
 class RiskScore(BaseModel):
     overall: int = Field(ge=0, le=100)
-    breakdown: Dict[str, float]
+    breakdown: Dict[str, int]
+    penalty_breakdown: Dict[str, int]
     verdict: str
+    reasoning: str
 
 class SimulationOutcome(BaseModel):
     scenario: str

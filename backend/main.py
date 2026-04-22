@@ -31,42 +31,68 @@ scorer = RiskScorer()
 simulator = ScenarioSimulator()
 advisor = NegotiationAdvisor()
 
+def serialize_event(data: dict) -> str:
+    """Safely serialize data to SSE format with proper newlines."""
+    try:
+        json_str = json.dumps(data, default=str)
+        return f"data: {json_str}\n\n"
+    except Exception as e:
+        logger.error(f"Serialization error: {str(e)}")
+        return f"data: {json.dumps({'error': 'Serialization failed'})}\n\n"
+
 @app.post("/api/analyze/stream")
 async def analyze_contract_stream(req: AnalysisRequest):
     """Provides SSE streaming to prevent frontend freeze."""
     async def event_generator():
         try:
-            yield f"data: {json.dumps({'stage': 'Parsing clauses...', 'result': None})}\n\n"
+            yield serialize_event({'stage': 'Parsing clauses...', 'result': None})
+            
             clauses = await parser.parse(req.contract_text)
+            logger.info(f"Parsed {len(clauses)} clauses")
             
             if not clauses:
-                yield f"data: {json.dumps({'error': 'No clauses could be extracted.'})}\n\n"
+                yield serialize_event({'error': 'No clauses could be extracted.'})
                 return
             
-            yield f"data: {json.dumps({'stage': 'Analyzing risks parallely...', 'result': None})}\n\n"
+            yield serialize_event({'stage': 'Analyzing risks in parallel...', 'result': None})
             risks = await analyzer.analyze(clauses)
+            logger.info(f"Analyzed {len(risks)} risks")
+            
             score = scorer.score(risks)
+            logger.info(f"Risk score: {score.overall} ({score.verdict})")
             
-            yield f"data: {json.dumps({'stage': 'Running scenarios & insights...', 'result': None})}\n\n"
+            yield serialize_event({'stage': 'Running scenario simulations...', 'result': None})
             sims = []
-            if req.user_query:
+            if req.user_query and req.user_query.strip():
                 sim_res = await simulator.simulate(clauses, risks, req.user_query)
-                if sim_res: sims.append(sim_res)
-                
+                if sim_res:
+                    sims.append(sim_res)
+                    logger.info("Simulation completed")
+            
+            yield serialize_event({'stage': 'Generating negotiation suggestions...', 'result': None})
             suggestions = await advisor.advise(risks, clauses)
+            logger.info(f"Generated {len(suggestions)} suggestions")
             
-            final_data = AnalysisResponse(
-                clauses=clauses,
-                risks=risks,
-                score=score,
-                simulations=sims,
-                suggestions=suggestions
-            )
+            # Build final response - serialize individual components
+            final_response = {
+                'clauses': [c.dict() for c in clauses],
+                'risks': [r.dict() for r in risks],
+                'score': score.dict(),
+                'simulations': [s.dict() for s in sims] if sims else [],
+                'suggestions': [s.dict() for s in suggestions]
+            }
             
-            yield f"data: {json.dumps({'stage': 'Complete', 'result': final_data.dict()})}\n\n"
+            yield serialize_event({'stage': 'Complete', 'result': final_response})
+            
+            logger.info("Analysis completed successfully")
             
         except Exception as e:
-            logger.error(f"Execution Error: {str(e)}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.error(f"Execution Error: {type(e).__name__}: {str(e)}", exc_info=True)
+            yield serialize_event({'error': f"Analysis failed: {str(e)[:100]}"})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "LawLens-X"}
