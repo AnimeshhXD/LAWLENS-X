@@ -46,17 +46,26 @@ class RiskAnalyzer:
             try:
                 resp = await generate_completion(prompt)
                 
-                # Robust Regex JSON extraction to ignore LLM chatting
-                match = re.search(r'\[.*\]|\{.*\}', resp, re.DOTALL)
+                # Robust Regex JSON extraction - prioritize array pattern first
+                match = re.search(r'\[.*?\](?!.*\[)', resp, re.DOTALL)
+                if not match:
+                    # Fallback to object if array not found
+                    match = re.search(r'\{.*?\}(?!.*\{)', resp, re.DOTALL)
+                
                 clean_resp = match.group(0) if match else "[]"
                 
-                extra_reasons = json.loads(clean_resp)
-                if isinstance(extra_reasons, list):
-                    reasons.extend(extra_reasons[:2]) 
-                    if len(reasons) > 2 and level == "Low":
-                        level = "Medium"
+                try:
+                    extra_reasons = json.loads(clean_resp)
+                    if isinstance(extra_reasons, list):
+                        # Only add up to 2 extra reasons to avoid inflating
+                        reasons.extend([str(r) for r in extra_reasons[:2] if isinstance(r, (str, int))])
+                        if len(reasons) > 2 and level == "Low":
+                            level = "Medium"
+                except json.JSONDecodeError as json_err:
+                    logger.warning(f"JSON decode failed for clause {clause.id}: {json_err}. Using rule fallbacks.")
+                    
             except Exception as e:
-                logger.warning(f"LLM risk enrichment failed for clause {clause.id}: {str(e)}. Using rule fallbacks.")
+                logger.warning(f"LLM risk enrichment failed for clause {clause.id}: {type(e).__name__}: {str(e)}. Using rule fallbacks.")
 
             if not reasons:
                 reasons.append("Standard verbiage. Low inherent risk.")

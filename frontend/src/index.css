@@ -4,6 +4,20 @@
 
 @layer base {
   body {
-    @apply bg-gray-950 text-white font-sans;
+    @apply bg-gray-950 text-gray-100 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .card {
+    @apply bg-gray-900 border border-gray-800 rounded-lg shadow-sm;
+  }
+  
+  .card:hover {
+    @apply bg-gray-800 shadow-md transition-all duration-150;
   }
 }

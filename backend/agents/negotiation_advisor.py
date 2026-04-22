@@ -37,7 +37,9 @@ class NegotiationAdvisor:
     async def _advise_single(self, risk: ClauseRisk, clauses: List[Clause], sem: asyncio.Semaphore) -> Suggestion:
         async with sem:
             clause = next((c for c in clauses if c.id == risk.clause_id), None)
-            if not clause: return None
+            if not clause:
+                logger.warning(f"Clause not found for risk {risk.clause_id}")
+                return None
             
             fallback_prop, fallback_rat = self._accumulate_fallback_suggestions(clause.text)
             prompt = f"Rewrite to be less risky considering these targets: {fallback_prop}. Return ONLY valid JSON object with 'proposed' and 'rationale'. Clause: {clause.text}"
@@ -45,32 +47,47 @@ class NegotiationAdvisor:
             try:
                 resp = await generate_completion(prompt)
                 
-                # Robust Regex JSON extraction
-                match = re.search(r'\{.*\}', resp, re.DOTALL)
+                # Robust Regex JSON extraction - look for objects specifically
+                match = re.search(r'\{.*?\}(?!.*\{)', resp, re.DOTALL)
                 clean_resp = match.group(0) if match else "{}"
                 
-                data = json.loads(clean_resp)
-                if "proposed" not in data or "rationale" not in data:
-                    raise ValueError("JSON missing required schema keys")
+                try:
+                    data = json.loads(clean_resp)
                     
-                return Suggestion(
-                    clause_id=clause.id,
-                    original=clause.text,
-                    proposed=data["proposed"],
-                    rationale=data["rationale"]
-                )
+                    # Validate required keys
+                    if "proposed" not in data or "rationale" not in data:
+                        logger.warning(f"JSON missing required keys for {clause.id}, using fallback")
+                        raise ValueError("JSON missing required schema keys")
+                    
+                    return Suggestion(
+                        clause_id=clause.id,
+                        original=clause.text[:300],  # Limit length
+                        proposed=str(data["proposed"])[:300],
+                        rationale=str(data["rationale"])[:200]
+                    )
+                except (json.JSONDecodeError, ValueError, KeyError) as parse_err:
+                    logger.warning(f"Advisor JSON parsing failed for {clause.id}: {parse_err}. Using fallback compound strings.")
+                    
             except Exception as e:
-                logger.error(f"Advisor LLM failed for {clause.id}: {str(e)}. Using fallback compound strings.")
-                return Suggestion(
-                    clause_id=clause.id, 
-                    original=clause.text, 
-                    proposed=fallback_prop, 
-                    rationale=fallback_rat
-                )
+                logger.error(f"Advisor LLM failed for {clause.id}: {type(e).__name__}: {str(e)}. Using fallback.")
+                
+            # Fallback suggestion with accumulated rules
+            return Suggestion(
+                clause_id=clause.id,
+                original=clause.text[:300],
+                proposed=fallback_prop[:300],
+                rationale=fallback_rat[:200]
+            )
 
     async def advise(self, risks: List[ClauseRisk], clauses: List[Clause]) -> List[Suggestion]:
         high_risks = [r for r in risks if r.level in ["High", "Critical"]]
-        sem = asyncio.Semaphore(5)
+        
+        # Use consistent semaphore value across all agents
+        sem = asyncio.Semaphore(3)
         tasks = [self._advise_single(risk, clauses, sem) for risk in high_risks]
-        results = await asyncio.gather(*tasks)
+        
+        if not tasks:
+            return []
+            
+        results = await asyncio.gather(*tasks, return_exceptions=False)
         return [r for r in results if r is not None]
