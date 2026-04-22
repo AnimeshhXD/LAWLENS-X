@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  backend:
+    build: 
+      context: ../backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "5173:5173"
