@@ -1,12 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
 
 interface ScoreCardProps {
   score: number;
   verdict: string;
+  penaltyBreakdown?: Record<string, number>;
 }
 
-const ScoreCard: React.FC<ScoreCardProps> = ({ score, verdict }) => {
+const ScoreCard: React.FC<ScoreCardProps> = ({ score, verdict, penaltyBreakdown }) => {
+  const [animatedScore, setAnimatedScore] = useState(0);
+
+  useEffect(() => {
+    if (!score) return;
+
+    let start = 0;
+    const end = score;
+    const duration = 1000;
+    const increment = end / (duration / 16);
+
+    const interval = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        start = end;
+        clearInterval(interval);
+      }
+      setAnimatedScore(Math.floor(start));
+    }, 16);
+
+    return () => clearInterval(interval);
+  }, [score]);
+
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-500';
     if (score >= 40) return 'text-yellow-500';
@@ -19,8 +42,27 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ score, verdict }) => {
     return 'bg-red-500/10 border-red-500/20';
   };
 
+  const formatPenaltyItem = (key: string, value: number) => {
+    const labels: Record<string, string> = {
+      "Critical": "Critical Risk",
+      "High": "High Risk", 
+      "Medium": "Medium Risk",
+      "Low": "Low Risk",
+      "escalation": "Escalation",
+      "diversity": "Diversity"
+    };
+    
+    let count = "";
+    if (key !== "escalation" && key !== "diversity") {
+      const weight = key === "Critical" ? 25 : key === "High" ? 15 : key === "Medium" ? 8 : 3;
+      count = ` (${Math.floor(value / weight)})`;
+    }
+    
+    return `${labels[key] || key}${count} → -${value}`;
+  };
+
   return (
-    <div className={`card p-6 border-2 ${getScoreBgColor(score)}`}>
+    <div className={`card p-6 border-2 ${getScoreBgColor(score)} Score transition-all duration-300 ease-in-out`}>
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center space-x-2 mb-2">
@@ -31,10 +73,24 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ score, verdict }) => {
             {verdict}
           </p>
         </div>
-        <div className={`text-5xl font-black ${getScoreColor(score)}`}>
-          {score}
+        <div className={`text-5xl font-black ${getScoreColor(score)} transition-all duration-300 ease-in-out`}>
+          {animatedScore}
         </div>
       </div>
+      
+      {penaltyBreakdown && (
+        <div className="mt-4 pt-4 border-t border-gray-700">
+          <div className="space-y-1">
+            {Object.entries(penaltyBreakdown)
+              .filter(([_, value]) => value > 0)
+              .map(([key, value]) => (
+                <div key={key} className="text-xs text-gray-400">
+                  {formatPenaltyItem(key, value)}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

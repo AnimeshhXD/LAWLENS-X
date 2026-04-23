@@ -14,7 +14,9 @@ export interface ClauseRisk {
 export interface RiskScore {
   overall: number;
   breakdown: Record<string, number>;
+  penalty_breakdown: Record<string, number>;
   verdict: string;
+  reasoning: string;
 }
 
 export interface SimulationOutcome {

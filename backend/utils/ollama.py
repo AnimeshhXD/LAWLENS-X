@@ -14,7 +14,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 logger = logging.getLogger(__name__)
 
 async def generate_completion(prompt: str, timeout: float = 60.0) -> str:
-    """Make real HTTP call to Ollama with robust error handling and fallback."""
+    
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             logger.info(f"Calling Ollama at {OLLAMA_URL} with model {OLLAMA_MODEL}")
