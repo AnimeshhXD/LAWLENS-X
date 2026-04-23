@@ -1,5 +1,5 @@
 from typing import List
-from backend.models import ClauseRisk, RiskScore
+from models import ClauseRisk, RiskScore
 
 class RiskScorer:
     def score(self, risks: List[ClauseRisk]) -> RiskScore:
@@ -40,18 +40,32 @@ class RiskScorer:
         total_penalty = sum(penalty_breakdown.values())
 
         # Final cap (after everything)
-        total_penalty = min(total_penalty, 60)
+        total_penalty = min(total_penalty, 95)
 
         # Final score
         score_val = max(0, 100 - total_penalty)
+
+        # Consistency enforcement - ensure score reflects risk severity
+        if breakdown["Critical"] > 0:
+            score_val = min(score_val, 60)
+        if breakdown["High"] > 0:
+            score_val = min(score_val, 75)
+
+        # Debug logs (optional - can be removed in production)
+        print("Breakdown:", breakdown)
+        print("Penalty Breakdown:", penalty_breakdown)
+        print("Total Penalty:", total_penalty)
+        print("Final Score:", score_val)
 
         # Generate reasoning string
         reasoning = self._generate_reasoning(breakdown, penalty_breakdown, risks)
 
         # Verdict mapping
-        if score_val < 55:
+        if score_val < 40:
             verdict = "DANGEROUS: Do Not Sign - Requires Major Revision"
-        elif score_val < 75:
+        elif score_val < 60:
+            verdict = "RISKY: Significant Concerns - Negotiate Terms"
+        elif score_val < 80:
             verdict = "CAUTION: Proceed Carefully - Negotiation Required"
         else:
             verdict = "SAFE: Low Risk Output"

@@ -2,8 +2,8 @@ import json
 import logging
 import re
 from typing import List
-from backend.models import Clause, ClauseRisk, SimulationResult, SimulationOutcome
-from backend.utils.ollama import generate_completion
+from models import Clause, ClauseRisk, SimulationResult, SimulationOutcome
+from utils.ollama import generate_completion
 
 logger = logging.getLogger(__name__)
 

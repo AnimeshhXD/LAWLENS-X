@@ -31,6 +31,7 @@ const App: React.FC = () => {
       },
       (err) => {
         setError(err);
+        setData(null);
         setLoading(false);
       }
     );
@@ -54,7 +55,7 @@ const App: React.FC = () => {
             />
             
             {error && (
-              <div className="card p-4 border-red-800/20 bg-red-900/10">
+              <div role="alert" className="card p-4 border-red-800/20 bg-red-900/10 error">
                 <div className="flex items-center space-x-2 text-red-400">
                   <XCircle className="w-4 h-4" />
                   <span className="text-sm">{error}</span>

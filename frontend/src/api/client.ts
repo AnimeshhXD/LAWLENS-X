@@ -6,7 +6,7 @@ export const analyzeContractStream = (
   onComplete: (data: AnalysisResponse) => void,
   onError: (err: string) => void
 ) => {
-  const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/analyze/stream`;
+  const url = '/api/analyze';
 
   fetch(url, {
     method: 'POST',

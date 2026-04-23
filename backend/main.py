@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
-from backend.models import AnalysisRequest, AnalysisResponse
-from backend.agents.clause_parser import ClauseParser
-from backend.agents.risk_analyzer import RiskAnalyzer
-from backend.agents.risk_scorer import RiskScorer
-from backend.agents.scenario_simulator import ScenarioSimulator
-from backend.agents.negotiation_advisor import NegotiationAdvisor
+from models import AnalysisRequest, AnalysisResponse
+from agents.clause_parser import ClauseParser
+from agents.risk_analyzer import RiskAnalyzer
+from agents.risk_scorer import RiskScorer
+from agents.scenario_simulator import ScenarioSimulator
+from agents.negotiation_advisor import NegotiationAdvisor
 
 app = FastAPI(title="LawLens-X API")
 
@@ -78,7 +78,7 @@ async def analyze_contract_stream(req: AnalysisRequest):
                 'clauses': [c.dict() for c in clauses],
                 'risks': [r.dict() for r in risks],
                 'score': score.dict(),
-                'simulations': [s.dict() for s in sims] if sims else [],
+                'simulations': [s.dict() for s in sims] if sims else None,
                 'suggestions': [s.dict() for s in suggestions]
             }
             
@@ -91,6 +91,11 @@ async def analyze_contract_stream(req: AnalysisRequest):
             yield serialize_event({'error': f"Analysis failed: {str(e)[:100]}"})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.post("/api/analyze")
+async def analyze_contract(req: AnalysisRequest):
+    """Alias endpoint for test compatibility - redirects to stream endpoint."""
+    return await analyze_contract_stream(req)
 
 @app.get("/health")
 async def health_check():

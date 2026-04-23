@@ -2,7 +2,7 @@ import re
 import uuid
 import logging
 from typing import List
-from backend.models import Clause
+from models import Clause
 
 logger = logging.getLogger(__name__)
 

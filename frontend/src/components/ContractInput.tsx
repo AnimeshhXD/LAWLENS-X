@@ -40,7 +40,7 @@ const ContractInput: React.FC<ContractInputProps> = ({
 
       <div>
         <label className="block text-sm font-medium text-gray-100 mb-2">
-          Scenario Analysis (Optional)
+          Ask a Question (Optional)
         </label>
         <input
           type="text"
@@ -56,6 +56,8 @@ const ContractInput: React.FC<ContractInputProps> = ({
         onClick={onAnalyze}
         disabled={loading || !text.trim()}
         className="btn-primary w-full py-3 flex items-center justify-center space-x-2"
+        type="button"
+        tabIndex={0}
       >
         {loading ? (
           <>

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Literal
 
 class Clause(BaseModel):
     id: str
@@ -9,7 +9,7 @@ class Clause(BaseModel):
 
 class ClauseRisk(BaseModel):
     clause_id: str
-    level: str  # "Low", "Medium", "High", "Critical"
+    level: Literal["Low", "Medium", "High", "Critical"]
     reasons: List[str]
 
 class RiskScore(BaseModel):

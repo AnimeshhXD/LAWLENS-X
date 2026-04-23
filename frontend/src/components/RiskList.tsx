@@ -11,11 +11,11 @@ const RiskList: React.FC<RiskListProps> = ({ risks }) => {
     switch (level) {
       case 'High':
       case 'Critical':
-        return <XCircle className="w-4 h-4 text-danger" />;
+        return <XCircle className="w-4 h-4 text-red-500" />;
       case 'Medium':
-        return <AlertCircle className="w-4 h-4 text-warning" />;
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
       default:
-        return <CheckCircle className="w-4 h-4 text-success" />;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
     }
   };
 
@@ -23,11 +23,26 @@ const RiskList: React.FC<RiskListProps> = ({ risks }) => {
     switch (level) {
       case 'High':
       case 'Critical':
-        return 'text-danger bg-danger/10 border-danger/20';
+        return 'text-red-500 bg-red-500/10 border-red-500/20';
       case 'Medium':
-        return 'text-warning bg-warning/10 border-warning/20';
+        return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
       default:
-        return 'text-success bg-success/10 border-success/20';
+        return 'text-green-500 bg-green-500/10 border-green-500/20';
+    }
+  };
+
+  const getRiskTextColor = (level: string) => {
+    switch (level) {
+      case 'Critical':
+        return 'text-red-500';
+      case 'High':
+        return 'text-orange-400';
+      case 'Medium':
+        return 'text-yellow-400';
+      case 'Low':
+        return 'text-green-400';
+      default:
+        return 'text-gray-400';
     }
   };
 
@@ -38,22 +53,22 @@ const RiskList: React.FC<RiskListProps> = ({ risks }) => {
   return (
     <div className="card p-6">
       <div className="flex items-center space-x-2 mb-4">
-        <AlertTriangle className="w-5 h-5 text-warning" />
-        <h3 className="text-lg font-semibold text-text-primary">Critical Risks</h3>
+        <AlertTriangle className="w-5 h-5 text-yellow-500" />
+        <h3 className="text-lg font-semibold text-gray-100">Critical Risks</h3>
       </div>
       
       {displayRisks.length === 0 ? (
-        <p className="text-text-secondary text-sm">No critical risks detected.</p>
+        <p className="text-gray-400 text-sm">No critical risks detected.</p>
       ) : (
         <div className="space-y-3">
           {displayRisks.map((risk, index) => (
             <div
               key={index}
-              className={`p-3 rounded-lg border ${getRiskColor(risk.level)}`}
+              className={`p-3 rounded-lg border ${getRiskColor(risk.level)} transition-all duration-300 ease-in-out`}
             >
               <div className="flex items-center space-x-2 mb-2">
                 {getRiskIcon(risk.level)}
-                <span className="font-medium">{risk.level} Risk</span>
+                <span className={`font-medium ${getRiskTextColor(risk.level)}`}>{risk.level} Risk</span>
               </div>
               <ul className="space-y-1 text-sm">
                 {risk.reasons.slice(0, 2).map((reason, idx) => (
