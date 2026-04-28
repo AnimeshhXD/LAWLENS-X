@@ -161,3 +161,7 @@ async def analyze_contract(req: AnalysisRequest):
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "LawLens-X"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

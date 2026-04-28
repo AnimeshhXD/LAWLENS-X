@@ -208,6 +208,40 @@ class RiskAnalyzer:
         mapping = {"Low": 1, "Medium": 2, "High": 3, "Critical": 4}
         return mapping.get(level, 0)
 
+    def _validate_impact_level(self, value: Any, fallback: str) -> str:
+        """Validate and normalize impact_level to match Literal type."""
+        valid_levels = ["Money Risk", "Legal Risk", "Lock-in Risk", "Control Risk"]
+        
+        if not value:
+            return fallback
+        
+        value_str = str(value).strip()
+        
+        # Direct match
+        if value_str in valid_levels:
+            return value_str
+        
+        # Fuzzy matching
+        value_lower = value_str.lower()
+        for valid in valid_levels:
+            if valid.lower() in value_lower or value_lower in valid.lower():
+                return valid
+        
+        # If LLM returned severity levels or other invalid values, map them
+        severity_mappings = {
+            "critical": "Money Risk",  # Critical issues often have financial impact
+            "high": "Control Risk",
+            "medium": "Legal Risk",
+            "low": "Legal Risk",
+        }
+        
+        mapped = severity_mappings.get(value_lower)
+        if mapped:
+            return mapped
+        
+        # Return fallback if no valid match
+        return fallback
+
     async def _analyze_single_clause(self, clause: Clause, sem: asyncio.Semaphore) -> ClauseRisk:
         async with sem:
             rule = self._evaluate_rules(clause.text)
@@ -216,7 +250,8 @@ class RiskAnalyzer:
             prompt = (
                 "You are a legal product analyst. Analyze the clause and return ONLY valid JSON with keys: "
                 "what_this_means, real_world_risk, why_company_uses_this, improved_clause, what_should_user_do (array of strings), "
-                "real_world_scenario, impact_level, negotiation_actions (array with action/priority/negotiation_line), "
+                "real_world_scenario, impact_level (must be one of: 'Money Risk', 'Legal Risk', 'Lock-in Risk', or 'Control Risk'), "
+                "negotiation_actions (array with action/priority/negotiation_line), "
                 "reasons (array of short plain-English bullets). Keep language simple for non-lawyers.\n"
                 f"Clause type hint: {rule['type']}\n"
                 f"Matched sentence: {rule['matched_sentence']}\n"
@@ -260,7 +295,7 @@ class RiskAnalyzer:
                 original_clause=rule["matched_sentence"][:500],
                 improved_clause=str(llm_payload.get("improved_clause") or fallback_improved)[:500],
                 real_world_scenario=str(llm_payload.get("real_world_scenario") or rule["real_world_scenario"])[:320],
-                impact_level=llm_payload.get("impact_level") or rule["impact_level"],
+                impact_level=self._validate_impact_level(llm_payload.get("impact_level"), rule["impact_level"]),
                 negotiation_actions=[
                     {
                         "action": str(a.get("action", ""))[:120],
